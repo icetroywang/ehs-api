@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公共危險物品危害辨識卡 (H-Card) 企業級戰情系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <style>
+        /* =========================================================================
+           [既有架構規格] 全域設定與 Split-View 排版防護 (嚴格對齊您截圖的洗鍊視覺)
+           ========================================================================= */
+        :root {
+            --primary-color: #1a365d;       /* 沉穩深藍 */
+            --secondary-color: #2b6cb0;     /* 科技藍 */
+            --accent-green: #2f855a;        /* 環保墨綠 */
+            --accent-orange: #b7791f;       /* 消防金橘 */
+            --bg-light: #f7fafc;            /* 淺灰底色 */
+            --border-color: #e2e8f0;        /* 邊框色 */
+            --text-main: #2d3748;           /* 主文字色 */
+            --text-muted: #718096;          /* 次要文字色 */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: "Helvetica Neue", Arial, "細明體", "Microsoft JhengHei", sans-serif; color: var(--text-main); background-color: var(--bg-light); overflow: hidden; height: 100vh; }
+
+        /* 頂部全寬置頂基本資料表格 */
+        #top-info-banner {
+            width: 100%; background: #ffffff; padding: 12px 20px; border-bottom: 2px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 100; position: relative;
+        }
+        .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .info-table th { background: #edf2f7; color: var(--primary-color); font-weight: bold; text-align: center; padding: 6px; border: 1px solid var(--border-color); }
+        .info-table td { padding: 6px; border: 1px solid var(--border-color); text-align: center; background: #fff; }
+
+        /* Split-View 主容器 */
+        .main-split-container { display: flex; height: calc(100vh - 75px); width: 100%; position: relative; }
+
+        /* 左側獨立資料欄 (寬度鎖定 295px) */
+        #left-sidebar {
+            width: 295px; background: #ffffff; border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; height: 100%; z-index: 90; transition: transform 0.3s ease;
+        }
+        .sidebar-scroll-content { flex: 1; overflow-y: auto; padding: 15px; }
+
+        /* 3x2 危害特性微型網格 */
+        .hazard-grid-3x2 {
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 45px);
+            gap: 4px; margin: 10px 0; background: #edf2f7; padding: 4px; border-radius: 4px;
+        }
+        .hazard-cell { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; color: #fff; border-radius: 2px; }
+        .cell-toxic { background-color: #4a5568; }
+        .cell-water { background-color: #2b6cb0; }
+        .cell-explosive { background-color: #dd6b20; }
+        .cell-flammable { background-color: #e53e3e; }
+        .cell-pressure { background-color: #3182ce; }
+        .cell-reactive { background-color: #805ad5; }
+
+        /* 配置點編輯清單樣式 */
+        .config-list-item { background: #fff; border: 1px solid var(--border-color); padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 13px; }
+        .config-list-item h4 { font-size: 14px; color: var(--primary-color); margin-bottom: 4px; }
+
+        /* 廠區安全法規入口進入鈕 */
+        .nav-action-btn {
+            background-color: var(--primary-color); color: #ffffff; border: none; width: 100%;
+            padding: 11px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer;
+            margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .nav-action-btn:hover { background-color: #102a43; }
+
+        /* 右側地圖區 */
+        #right-map-canvas-container { flex: 1; height: 100%; background: #cbd5e0; position: relative; overflow: hidden; }
+        .map-bg-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 16px; font-weight: bold; }
+        .map-pin { position: absolute; width: 24px; height: 32px; cursor: pointer; transform: translate(-12px, -32px); }
+
+        /* =========================================================================
+           [法規雲模組視窗] 緊湊型高壓縮版面（頂部篩選嚴格小於 20% 高度）
+           ========================================================================= */
+        .reg-fullscreen-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-light); z-index: 1000; display: none; flex-direction: column;
+        }
+        
+        /* 壓縮頂部控制列高度，一行流緊湊排列 */
+        .reg-modal-header { 
+            background: #ffffff; padding: 10px 25px; border-bottom: 1px solid #cbd5e0; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03); height: 115px; flex-shrink: 0;
+        }
+        .header-main-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .reg-modal-title { font-size: 18px; color: var(--text-main); font-weight: bold; border-left: 5px solid var(--primary-color); padding-left: 10px; display: flex; align-items: center; gap: 10px; }
+        
+        .reg-filter-panel { 
+            display: flex; gap: 15px; align-items: center; background: #f8f9fa; 
+            padding: 6px 15px; border-radius: 6px; border: 1px solid var(--border-color);
+        }
+        .filter-item-group { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+        .filter-item-group label { font-weight: bold; color: #4a5568; }
+        .reg-text-search { width: 260px; padding: 5px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 12.5px; }
+        .reg-date-picker { padding: 4px 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 12px; width: 125px; }
+        
+        .time-pill { padding: 3px 10px; background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 15px; font-size: 12px; cursor: pointer; color: #4a5568; font-weight: 500; }
+        .time-pill:hover, .time-pill.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+        /* 列表清冊檢視區 */
+        .reg-list-container { flex: 1; overflow-y: auto; padding: 15px 25px; }
+        .reg-list-table-header { display: flex; justify-content: space-between; padding: 0 15px 6px 15px; font-weight: bold; color: var(--text-muted); border-bottom: 2px solid #cbd5e0; margin-bottom: 8px; font-size: 13.5px; }
+        .reg-ul-list { list-style: none; }
+        .reg-row-item { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 12px 20px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; }
+        .reg-row-item:hover { border-color: var(--primary-color); box-shadow: 0 3px 8px rgba(0,0,0,0.04); }
+
+        /* =========================================================================
+           [大修復：釋放 80% 空間之左右對分卡片分流排版 + 外層單一垂直滾動大捲軸]
+           ========================================================================= */
+        #reg-detail-diff-panel { display: none; height: 100%; flex-direction: column; }
+        .detail-control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+        .detail-main-title { font-size: 16px; font-weight: bold; color: var(--primary-color); }
+        
+        .action-btn-group button { padding: 5px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 6px; font-size: 12.5px; }
+        .btn-navigation-back { background: #edf2f7; color: #4a5568; }
+        .btn-action-pdf { background: #c53030; color: white; }
+
+        /* 全域唯一的垂直滾動大捲軸容器 */
+        .global-scroll-wrapper {
+            flex: 1; overflow-y: auto; padding-right: 4px; padding-bottom: 20px;
+        }
+
+        /* 雙欄對分的主排版卡片框（完美重現截圖介面） */
+        .alignment-split-container {
+            display: block; width: 100%; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+        .alignment-split-header {
+            display: flex; width: 100%; border-bottom: 2px solid #cbd5e0; font-weight: bold; font-size: 13.5px; position: sticky; top: 0; z-index: 10;
+        }
+        .pane-header-item { width: 50%; padding: 12px 25px; }
+        .pane-header-item.old-title-bg { color: #c53030; background: #fff5f5; border-right: 1px solid #cbd5e0; }
+        .pane-header-item.new-title-bg { color: #22543d; background: #f0fff4; }
+
+        /* 按條次橫向 Flex row：強迫左右卡片內部縱向延伸等高，死死鎖定同一個地平線 */
+        .clause-alignment-row {
+            display: flex; width: 100%; border-bottom: 1px solid #e2e8f0; align-items: stretch;
+        }
+        .clause-alignment-row:last-child { border-bottom: none; }
+        
+        /* 左右分流獨立內容包覆區，字再多也絕不重疊跑版 */
+        .clause-pane-side {
+            width: 50%; padding: 22px 25px; line-height: 1.8; font-size: 14px; color: #4a5568; word-break: break-all; display: flex; flex-direction: column;
+        }
+        .clause-pane-side.left-box { border-right: 1px solid #cbd5e0; background: #fafafa; }
+
+        /* 條次精緻卡片標籤 */
+        .law-clause-badge {
+            display: inline-block; width: fit-content; padding: 2px 8px; font-size: 11.5px; font-weight: bold; border-radius: 4px; color: white; margin-bottom: 10px;
+        }
+        .clause-old { background-color: #e53e3e; }
+        .clause-new { background-color: #319795; }
+        .clause-title-text { font-weight: bold; color: #2d3748; margin-left: 6px; font-size: 13.5px; }
+        .article-body-content { margin-top: 6px; font-size: 13.5px; }
+
+        /* 單欄公文級說明面板（完整總說明專用） */
+        .single-column-doc-pane { display: none; background: #ffffff; border: 1px solid #cbd5e0; border-radius: 6px; padding: 25px 30px; line-height: 1.8; font-size: 14px; }
+        .doc-section-block { margin-bottom: 22px; }
+        .doc-section-block h3 { color: var(--primary-color); font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 6px; }
+        .doc-section-block h4 { color: var(--primary-color); font-size: 14.5px; margin: 12px 0 6px 0; border-left: 4px solid var(--secondary-color); padding-left: 8px; }
+        .doc-highlight-box { background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px; padding: 15px; margin: 12px 0; color: #9b2c2c; }
+
+        /* 紅綠高亮標記 */
+        del { background-color: #fed7d7; color: #9b2c2c; text-decoration: line-through; padding: 1px 3px; border-radius: 2px; font-weight: bold; }
+        ins { background-color: #c6f6d5; color: #22543d; text-decoration: none; padding: 1px 3px; border-radius: 2px; font-weight: bold; }
+
+        /* =========================================================================
+           [雙軌列印防護機制] 確保 PDF 導出時完美排除背景元素
+           ========================================================================= */
+        @media print {
+            #reg-database-modal { display: none !important; }
+            body { background: #fff; height: 162mm; overflow: hidden; }
+            #top-info-banner { width: 100%; display: table; }
+            #left-sidebar { width: 295px !important; display: block; float: left; }
+            #right-map-canvas-container { display: block; height: 100% !important; overflow: hidden; }
+            .nav-action-btn { display: none !important; }
+        }
+
+        body.exporting-regulatory-diff { background: #ffffff !important; overflow: auto !important; height: auto !important; }
+        body.exporting-regulatory-diff #top-info-banner, body.exporting-regulatory-diff .main-split-container { display: none !important; }
+        body.exporting-regulatory-diff #reg-database-modal { display: flex !important; position: static; width: 100% !important; height: auto !important; overflow: visible !important; }
+        body.exporting-regulatory-diff .reg-modal-header, body.exporting-regulatory-diff #reg-list-view, body.exporting-regulatory-diff .action-btn-group, body.exporting-regulatory-diff .reg-tab-button-group { display: none !important; }
+        body.exporting-regulatory-diff #reg-detail-diff-panel { display: flex !important; height: auto !important; overflow: visible !important; }
+        body.exporting-regulatory-diff .global-scroll-wrapper { height: auto !important; overflow: visible !important; }
+        body.exporting-regulatory-diff .alignment-split-container { border: 1px solid #000 !important; }
+        body.exporting-regulatory-diff .clause-alignment-row { page-break-inside: avoid; border-bottom: 1px solid #000 !important; }
+        body.exporting-regulatory-diff .single-column-doc-pane { display: block !important; border: 1px solid #000 !important; page-break-inside: avoid; }
+    </style>
+</head>
+<body>
+
+    <header id="top-info-banner">
+        <table class="info-table">
+            <thead>
+                <tr><th>更新日期</th><th>公司名稱</th><th>廠區名稱</th><th>管制編號</th><th>負責人/聯絡電話</th><th>消防聯絡人/電話</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>2026-05-23</td><td>石化聚合物製造股份有限公司</td><td>高雄小港一廠</td><td>A2026-0523-001</td><td>林志明 / 07-801xxxx</td><td>陳大同 / 0912-xxxxxx</td></tr>
+            </tbody>
+        </table>
+    </header>
+
+    <div class="main-split-container">
+        <aside id="left-sidebar">
+            <div class="sidebar-scroll-content">
+                <button class="nav-action-btn" onclick="openRegulatoryModal()">📚 廠區安全法規資料庫</button>
+                <h3 style="font-size: 14px; margin-bottom: 5px; color: var(--primary-color);">化學品標示</h3>
+                <div class="hazard-grid-3x2">
+                    <div class="hazard-cell cell-toxic">毒</div><div class="hazard-cell cell-water">水</div><div class="hazard-cell cell-explosive">爆</div>
+                    <div class="hazard-cell cell-flammable">燃</div><div class="hazard-cell cell-pressure">壓</div><div class="hazard-cell cell-reactive">放</div>
+                </div>
+                <h3 style="font-size: 14px; margin: 15px 0 5px 0; color: var(--primary-color);">配置點編輯清單</h3>
+                <div id="mock-config-list">
+                    <div class="config-list-item"><h4>📍 T-01 儲槽區</h4><p>主要儲存：甲苯 (Toluene)</p><p style="font-size:11px; color:var(--text-muted)">CAS No: 108-88-3</p></div>
+                    <div class="config-list-item"><h4>📍 銲接與氣體原料庫</h4><p>主要儲存：高壓乙炔、氧氣鋼瓶</p></div>
+                </div>
+            </div>
+        </aside>
+
+        <main id="right-map-canvas-container">
+            <div class="map-bg-placeholder">🗺️ [廠區平面圖 Canvas 渲染核心網格區塊]</div>
+        </main>
+    </div>
+
+    <div id="reg-database-modal" class="reg-fullscreen-modal">
+        <div class="reg-modal-header">
+            <div class="header-main-row">
+                <div class="reg-modal-title">廠區安全法規資料庫 <span id="network-status-badge" class="network-status-badge status-offline">同步中...</span></div>
+                <button class="btn-close-modal" onclick="closeRegulatoryModal()">關閉返回戰情室</button>
+            </div>
+            <div class="reg-filter-panel">
+                <div class="filter-item-group">
+                    <label>搜尋範圍：</label>
+                    <input type="radio" name="searchScope" id="scopeName" value="name" checked> <label for="scopeName" style="font-weight:normal; margin-right:5px;">法規名稱</label>
+                    <input type="radio" name="searchScope" id="scopeContent" value="content"> <label for="scopeContent" style="font-weight:normal;">法條內容</label>
+                </div>
+                <div style="width: 1px; height: 15px; background: #cbd5e0;"></div>
+                <div class="filter-item-group">
+                    <input type="text" id="reg-keyword-input" class="reg-text-search" placeholder="輸入關鍵字（如：消防、職場霸凌）..." onkeyup="executeSearch()">
+                </div>
+                <div style="width: 1px; height: 15px; background: #cbd5e0;"></div>
+                <div class="filter-item-group">
+                    <label>修訂區間：</label>
+                    <input type="date" id="filterDateStart" class="reg-date-picker" onchange="executeSearch()"> <span>~</span> <input type="date" id="filterDateEnd" class="reg-date-picker" onchange="executeSearch()">
+                </div>
+                <div class="filter-item-group">
+                    <button class="time-pill" onclick="applyQuickTimeRange(90, this)">最近一季</button>
+                    <button class="time-pill" onclick="applyQuickTimeRange(180, this)">最近半年</button>
+                    <button class="time-pill" onclick="applyQuickTimeRange(365, this)">最近一年</button>
+                    <button class="time-pill active" onclick="applyQuickTimeRange(0, this)">全部</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="reg-list-view" class="reg-list-container">
+            <div class="reg-list-table-header"><span>法規名稱</span><span>最後修訂日期</span></div>
+            <ul id="reg-injected-ul" class="reg-ul-list"></ul>
+        </div>
+
+        <div id="reg-detail-diff-panel" class="reg-list-container">
+            <div class="detail-control-row">
+                <div class="detail-main-title" id="regulatory-active-title">載入中...</div>
+                <div class="reg-tab-button-group">
+                    <button class="reg-tab-item active" id="tab-btn-compare" onclick="switchDetailTab('compare')">條文對照表</button>
+                    <button class="reg-tab-item" id="tab-btn-summary" onclick="switchDetailTab('summary')">立法總說明</button>
+                </div>
+                <div class="action-btn-group">
+                    <button class="btn-navigation-back" onclick="backToCatalogList()">⬅ 返回清單</button>
+                    <button class="btn-action-pdf" onclick="invokeRegulatoryPrintPDF()">📄 匯出成 PDF</button>
+                </div>
+            </div>
+
+            <div class="global-scroll-wrapper" id="global-scroll-pane">
+                
+                <div class="alignment-split-container" id="sub-view-split-box">
+                    <div class="alignment-split-header">
+                        <div class="pane-header-item old-title-bg">✕ 修正前條文內容 (現行條文)</div>
+                        <div class="pane-header-item new-title-bg">● 修正後條文內容 (修正條文)</div>
+                    </div>
+                    <div id="alignment-dynamic-rows-root">
+                        </div>
+                </div>
+
+                <div class="single-column-doc-pane" id="sub-view-doc-pane"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MasterRegulatoryCatalog = [
+            { id: 'FL015013', type: 'osh', typeName: '職安', name: '職業安全衛生法', lastUpdate: '2025-12-19' },
+            { id: 'FL045812', type: 'fire', typeName: '消防', name: '各類場所消防安全設備設置標準', lastUpdate: '2026-02-20' }
+        ];
+
+        let selectedRegulation = null;
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            renderCatalogDOM(MasterRegulatoryCatalog);
+            await syncWithCloud();
+        });
+
+        async function syncWithCloud() {
+            const statusBadge = document.getElementById('network-status-badge');
+            try {
+                const response = await fetch(`${API_BASE_URL}/catalog.json`, { cache: "no-cache" });
+                if (response.ok) {
+                    statusBadge.innerHTML = '● 雲端連線中';
+                    statusBadge.className = 'network-status-badge status-online';
+                }
+            } catch (error) {
+                statusBadge.innerHTML = '⚡ 離線模式 (本機快取)';
+                statusBadge.className = 'network-status-badge status-offline';
+            }
+        }
+
+        function openRegulatoryModal() { document.getElementById('reg-database-modal').style.display = 'flex'; backToCatalogList(); }
+        function closeRegulatoryModal() { document.getElementById('reg-database-modal').style.display = 'none'; }
+        function backToCatalogList() {
+            document.getElementById('reg-detail-diff-panel').style.display = 'none';
+            document.getElementById('reg-list-view').style.display = 'block';
+            executeSearch();
+        }
+
+        function applyQuickTimeRange(days, pill) {
+            document.querySelectorAll('.time-pill').forEach(el => el.classList.remove('active'));
+            pill.classList.add('active');
+            executeSearch();
+        }
+
+        function executeSearch() {
+            const keyword = document.getElementById('reg-keyword-input').value.toLowerCase().trim();
+            const filtered = MasterRegulatoryCatalog.filter(reg => reg.name.toLowerCase().includes(keyword));
+            renderCatalogDOM(filtered);
+        }
+
+        function renderCatalogDOM(dataList) {
+            const ul = document.getElementById('reg-injected-ul'); ul.innerHTML = '';
+            dataList.forEach(reg => {
+                const li = document.createElement('li'); li.className = 'reg-row-item';
+                li.onclick = () => routeToDetail(reg);
+                li.innerHTML = `<div><span class="reg-domain-badge ${reg.type}">${reg.typeName}</span><span class="reg-row-title">${reg.name}</span></div><div class="reg-row-date">最後修訂日期: ${reg.lastUpdate} <span class="reg-change-indicator">✨ 異動</span></div>`;
+                ul.appendChild(li);
+            });
+        }
+
+        async function routeToDetail(reg) {
+            document.getElementById('reg-list-view').style.display = 'none';
+            document.getElementById('reg-detail-diff-panel').style.display = 'flex';
+            document.getElementById('regulatory-active-title').innerText = `⚖️ ${reg.name} (雲端同步中...)`;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/${reg.id}.json`, { cache: "no-cache" });
+                if (!response.ok) throw new Error("Fetch failed");
+                selectedRegulation = reg;
+                selectedRegulation.detail = await response.json();
+                
+                document.getElementById('regulatory-active-title').innerText = `⚖️ ${reg.name} (最後修訂: ${reg.lastUpdate})`;
+                switchDetailTab('compare');
+            } catch (error) {
+                document.getElementById('regulatory-active-title').innerText = `❌ 載入失敗 (請檢查雲端 JSON 檔案對接與格式狀態)`;
+            }
+        }
+
+        function switchDetailTab(tabName) {
+            document.querySelectorAll('.reg-tab-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+            
+            const splitBox = document.getElementById('sub-view-split-box');
+            const docPane = document.getElementById('sub-view-doc-pane');
+            const rowsRoot = document.getElementById('alignment-dynamic-rows-root');
+
+            document.getElementById('global-scroll-pane').scrollTop = 0;
+
+            if(tabName === 'compare') {
+                splitBox.style.display = 'block'; docPane.style.display = 'none';
+                rowsRoot.innerHTML = '';
+
+                // 新對齊渲染大腦：橫向等高 flex 機制，強迫新舊法規的同一個條次鎖死在同一條地平線上
+                selectedRegulation.detail.rows.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'clause-alignment-row';
+                    rowDiv.innerHTML = `
+                        <div class="clause-pane-side left-box">
+                            <div>
+                                <span class="law-clause-badge clause-old">${row.num}</span>
+                                <span class="clause-title-text">${row.title}</span>
+                            </div>
+                            <div class="article-body-content">${row.old_diff}</div>
+                        </div>
+                        <div class="clause-pane-side">
+                            <div>
+                                <span class="law-clause-badge clause-new">${row.num}</span>
+                                <span class="clause-title-text">${row.title}</span>
+                            </div>
+                            <div class="article-body-content">${row.new_diff}</div>
+                        </div>
+                    `;
+                    rowsRoot.appendChild(rowDiv);
+                });
+            } else {
+                splitBox.style.display = 'none'; docPane.style.display = 'block';
+                docPane.innerHTML = selectedRegulation.detail.summary_html;
+            }
+        }
+
+        function invokeRegulatoryPrintPDF() {
+            document.body.classList.add('exporting-regulatory-diff');
+            setTimeout(() => { window.print(); document.body.classList.remove('exporting-regulatory-diff'); }, 150);
+        }
+    </script>
+</body>
+</html>
