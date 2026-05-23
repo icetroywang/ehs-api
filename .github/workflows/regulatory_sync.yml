@@ -10,11 +10,12 @@ jobs:
   regulatory_intelligence_job:
     runs-on: ubuntu-latest
     steps:
+    # 【精準修復】將原本的 v3 升級為 v4，完美對接最新的安全 Node.js 執行環境，消滅黃色警告
     - name: 🚀 複製與簽出廠區法規代儲存庫
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: 🐍 配置雲端 Python 核心解析編譯環境
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
@@ -31,12 +32,9 @@ jobs:
         from datetime import datetime
 
         print('=== [第一線：多軌情報監測哨發動] ===')
-        # 爬蟲自動同步對接勞動部法令系統與內政部消防法規系統之真實異動數據流
-        # 這裡會動態組裝並撈出當日全臺灣所有最新修正法令的發布日期
         gov_live_database = {
             'FL015013': {'name': '職業安全衛生法', 'live_date': '2025-12-19'},
             'FL045812': {'name': '各類場所消防安全設備設置標準', 'live_date': '2026-02-20'}
-            # 未來若有新法規加入，情報哨會在這裡自動動態擴充情報流
         }
         print('✅ 全臺灣最新安衛與消防法令異動公報讀取成功。')
 
@@ -45,8 +43,6 @@ jobs:
             local_catalog = json.load(f)
 
         has_changes = False
-        
-        # 迴圈自動遍歷 catalog.json 中註冊的所有法規項目，實施無上限全量自動識別
         for reg in local_catalog:
             reg_id = reg['id']
             reg_name = reg['name']
@@ -60,11 +56,6 @@ jobs:
                 
                 if datetime.strptime(gov_date, '%Y-%m-%d') > datetime.strptime(local_date, '%Y-%m-%d'):
                     print(f'   🚨 [決策] 偵測到重大修訂！立刻將 {reg_id} 列為今日精準下載標的！')
-                    
-                    print(f'   === [第三線] 正在下載 【{reg_name}】 100% 真實對照表與立法總說明全文 ===')
-                    # 機器人在背景自動逐字爬取官方數據，利用 difflib 自動生成 <ins> 與 <del> 的紅綠比對
-                    # 自動將全量 rows 陣列與 summary_html 更新寫入對應的 {reg_id}.json 檔案中
-                    
                     reg['lastUpdate'] = gov_date
                     has_changes = True
                 else:
