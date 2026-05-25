@@ -26,91 +26,167 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests beautifulsoup4
 
-    # 4. 啟動正版連網真實數據源解析與全量真實對帳字典防護網
-    - name: 🧠 執行政府官方數據源實時解析與真實公報字典強制覆蓋清洗
+    # 4. 啟動正版連網真實數據源解析與全動態爬蟲引擎 (全面拔除寫死假資料)
+    - name: 🧠 執行政府官方數據源實時解析與全動態爬蟲引擎
       run: |
         python << 'PYEOF'
         import os, json, requests, re, time, random
         from bs4 import BeautifulSoup
-        from datetime import datetime
+        from urllib.parse import urljoin
 
-        print('=== [第一線：多軌情報監測哨發動] ===')
+        print('=== [第一線：全動態情報監測哨發動 (徹底拔除寫死字典)] ===')
 
-        # 強效偽裝標頭群 (Fake User-Agent Pool)
         ua_pool = [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0'
         ]
 
-        def fetch_gov_date(soup):
-            """【核心修復一】精準解析包含「民國」字樣的真實最後修正日期，強制轉西元"""
-            try:
-                for label in soup.find_all(string=re.compile(r'修正日期|發布日期|修正時間')):
-                    parent = label.find_parent()
-                    if parent:
-                        nxt = parent.find_next_sibling()
-                        if nxt:
-                            dt = nxt.get_text(strip=True)
-                            # 精準比對「民國 114 年 09 月 04 日」或「114.09.04」
-                            m = re.search(r'(?:民國)?\s*(\d{2,4})\s*[./年]\s*(\d{1,2})\s*[./月]\s*(\d{1,2})', dt)
-                            if m:
-                                y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-                                if y < 1912: 
-                                    y += 1911  # 將民國轉為西元
-                                return f'{y:04d}-{mo:02d}-{d:02d}'
-            except Exception as ex:
-                print(f'      ⚠️ 日期爬取異常 ({ex})')
+        def parse_republic_date(text):
+            """動態萃取文本中的民國日期並轉西元"""
+            m = re.search(r'(?:民國)?\s*(\d{2,4})\s*[./年]\s*(\d{1,2})\s*[./月]\s*(\d{1,2})', text)
+            if m:
+                y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                if y < 1912: y += 1911
+                return f'{y:04d}-{mo:02d}-{d:02d}'
             return None
 
-        def build_real_truth_data(reg_name):
+        def dynamic_mol_engine(reg_id, reg_name):
             """
-            【核心修復三】法規名稱強關聯引擎。拔除 ID 綁定，只要名稱符合絕對觸發。
-            植入真實公報對照字典。完全拔除套話，直接對應真實 PDF 條文變更明細。
+            【核心修復一】勞動部法規查詢系統 (MOL) 動態對照表與總說明爬取引擎
+            自動尋找「條文對照表」與「立法總說明」的按鈕/連結，並動態爬取真實 HTML 表格。
             """
-            if '職業安全衛生教育訓練規則' in reg_name:
-                return [
-                    {'num': '第 20 條', 'title': '對外招訓認可制度', 'old_diff': '原現行條文關於對外招訓認可之規定。', 'new_diff': '修正規定訓練單位如對外招收不特定對象辦訓，應設立職業訓練機構並經中央主管機關認可，<ins>新增納管雇主團體及勞工團體</ins>。事業單位以辦理其勞工或相關承攬事業間之教育訓練為限。'},
-                    {'num': '第 20 條之 1', 'title': '申請認可文件', 'old_diff': '原無此條文或舊有申請規定。', 'new_diff': '<ins>新增／修正</ins>申請認可所需檢附文件之具體規範。'},
-                    {'num': '第 20 條之 2', 'title': '自主管理制度', 'old_diff': '原無強制建立自主管理制度之規定。', 'new_diff': '明定經中央主管機關認可得對外招訓之訓練單位，<ins>均應建立安全衛生教育訓練自主管理制度</ins>。'},
-                    {'num': '第 20 條之 3', 'title': '評鑑申請', 'old_diff': '原有評鑑機制與自主管理制度為雙軌機制。', 'new_diff': '明定評鑑制度及申請條件，<ins>整併現行評鑑與自主管理制度認可二機制</ins>。'},
-                    {'num': '第 20 條之 4', 'title': '評鑑文件', 'old_diff': '原無此條文。', 'new_diff': '<ins>新增</ins>申請評鑑所需檢附文件之具體規範。'},
-                    {'num': '第 21 條', 'title': '甲等以上資格', 'old_diff': '原辦理特定訓練之資格規定。', 'new_diff': '<ins>持續推行應具評鑑甲等以上資格始得辦理特定訓練</ins>之規範。'},
-                    {'num': '第 23 條', 'title': '訓練場所核定', 'old_diff': '原訓練場所之相關規定。', 'new_diff': '配合第二十條之修正，調整訓練場所核定相關規範。'},
-                    {'num': '第 24 條', 'title': '區域限制', 'old_diff': '原辦理訓練區域之限制規定。', 'new_diff': '配合實務需求調整辦理訓練之區域限制。'},
-                    {'num': '第 28 條', 'title': '結訓測驗', 'old_diff': '原結訓測驗之實施規定。', 'new_diff': '為強化訓練品質，修訂結訓測驗相關實施與監測規定。'},
-                    {'num': '第 31 條', 'title': '登錄義務', 'old_diff': '原訓練紀錄登錄之規定。', 'new_diff': '配合第二十條，修正訓練單位之登錄義務及時效。'},
-                    {'num': '第 38 條', 'title': '警告裁罰', 'old_diff': '原違規警告之規定。', 'new_diff': '明確化訓練單位違反相關規定時之警告裁罰基準。'},
-                    {'num': '第 39 條', 'title': '罰鍰', 'old_diff': '原違規罰鍰之規定。', 'new_diff': '配合新制修正相關違規罰鍰之適用情形。'},
-                    {'num': '第 40 條', 'title': '撤銷廢止', 'old_diff': '原撤銷或廢止認可之規定。', 'new_diff': '修正撤銷或廢止認可之構成要件。'},
-                    {'num': '第 41 條', 'title': '刪除', 'old_diff': '原條文內容。', 'new_diff': '<del>本條文刪除</del>。'},
-                    {'num': '第 42 條之 1', 'title': '過渡條款(重新認可)', 'old_diff': '原無此過渡條款。', 'new_diff': '明定已對外招訓之單位，<ins>應於一百十六年十二月三十一日前，經中央主管機關認可後，始得繼續對外招訓</ins>，屆期未重新認可者得廢止原認可。'},
-                    {'num': '第 42 條之 2', 'title': '過渡條款(評鑑)', 'old_diff': '原無此過渡條款。', 'new_diff': '配合第二十一條，訂定評鑑機制實施之過渡條款。'},
-                    {'num': '第 42 條之 3', 'title': '委託辦理', 'old_diff': '原分散於各條文之委託規定。', 'new_diff': '<ins>統合</ins>中央主管機關得委託學術機構或相關專業團體辦理本規則所定認可及評鑑等事項之規定。'}
-                ]
-            else:
-                return [{'num': '全條文', 'title': '無對照表', 'old_diff': f'無法自網頁自動擷取現行《{reg_name}》修正前後對照表。', 'new_diff': '請直接查閱政府公報最新發布之 PDF 實體檔案，系統絕不生成假資料。'}]
+            base_url = f'https://laws.mol.gov.tw/FLAW/FLAWDAT07.aspx?id={reg_id}'
+            headers = {'User-Agent': random.choice(ua_pool)}
+            real_rows = []
+            summary_html = ''
+            parsed_date = None
 
-        def build_real_truth_summary(reg_name):
+            try:
+                r = requests.get(base_url, headers=headers, timeout=10)
+                r.encoding = 'utf-8'
+                if r.status_code == 200:
+                    soup = BeautifulSoup(r.text, 'html.parser')
+                    
+                    # 1. 抓取動態真實日期
+                    for text_node in soup.find_all(string=re.compile(r'修正發布|發布|生效|中華民國')):
+                        dt = parse_republic_date(text_node)
+                        if dt:
+                            parsed_date = dt
+                            break
+
+                    # 2. 自動跟隨「立法總說明」連結並解析
+                    summary_link = soup.find('a', string=re.compile(r'立法總說明'))
+                    if summary_link and summary_link.get('href'):
+                        s_url = urljoin(base_url, summary_link.get('href'))
+                        sr = requests.get(s_url, headers=headers, timeout=10)
+                        sr.encoding = 'utf-8'
+                        s_soup = BeautifulSoup(sr.text, 'html.parser')
+                        
+                        content_div = s_soup.find('div', class_='text-content') or s_soup.find('table') or s_soup.find('body')
+                        if content_div:
+                            text_body = content_div.get_text(separator="<br>").strip()
+                            summary_html = f'<div class="doc-section-block"><h3>《{reg_name}》立法總說明</h3><p style="color:#718096; font-size:13px;">數據源：勞動部主管法規查詢系統 (自動爬取)</p><div style="line-height:2.0; font-size:14px; text-align:justify;">{text_body}</div></div>'
+
+                    # 3. 自動跟隨「條文對照表」連結，動態解析表格
+                    diff_link = soup.find('a', string=re.compile(r'條文對照表'))
+                    if diff_link and diff_link.get('href'):
+                        d_url = urljoin(base_url, diff_link.get('href'))
+                        dr = requests.get(d_url, headers=headers, timeout=10)
+                        dr.encoding = 'utf-8'
+                        d_soup = BeautifulSoup(dr.text, 'html.parser')
+                        
+                        tables = d_soup.find_all('table')
+                        for table in tables:
+                            trs = table.find_all('tr')
+                            for tr in trs:
+                                tds = tr.find_all(['td', 'th'])
+                                if len(tds) >= 2:
+                                    col1 = tds[0].get_text(strip=True)
+                                    col2 = tds[1].get_text(strip=True)
+                                    col3 = tds[2].get_text(strip=True) if len(tds) > 2 else ''
+                                    
+                                    # 過濾表頭
+                                    if '修正' in col1 or '現行' in col1 or '條文' in col1: continue
+                                    if not col1 and not col2: continue
+                                    
+                                    title = col1[:15] + '...' if len(col1) > 15 else col1
+                                    
+                                    # 動態組裝，絕不發明字眼
+                                    old_d = f'[現行條文]<br>{col2}' if col2 else '[無現行條文或刪除]'
+                                    new_d = f'<ins>[修正條文]</ins><br>{col1}' if col1 else '<del>[本條刪除]</del>'
+                                    if col3: new_d += f'<br><br><span style="color:#718096;font-size:12.5px;">【說明】{col3}</span>'
+                                    
+                                    real_rows.append({
+                                        'num': '異動條次',
+                                        'title': title,
+                                        'old_diff': old_d,
+                                        'new_diff': new_d
+                                    })
+            except Exception as e:
+                print(f'   ⚠️ MOL 引擎爬取異常: {e}')
+            
+            return real_rows, summary_html, parsed_date
+
+        def dynamic_moj_engine(reg_id, reg_name):
             """
-            【核心修復二】植入真實公報總說明字典。直接呈現 100% 真實之歷史沿革，徹底拔除套話。
+            【核心修復二】法務部全國法規資料庫 (MOJ) 備用引擎
+            若 MOL 引擎無對照表(如消防/環境法規)，則降級至 MOJ 抓取最新全量條文。如實標註無對照表，絕不造假。
             """
-            if '職業安全衛生教育訓練規則' in reg_name:
-                return '''<div style="margin-bottom:24px;">
-                <h3 style="font-size:17px; color:#1a365d; border-bottom:3px solid #2b6cb0; padding-bottom:10px; margin-bottom:14px;">《職業安全衛生教育訓練規則部分條文修正總說明（114.09.04 修正）》</h3>
-                <p style="font-size:14px; line-height:2.0; color:#2d3748; text-align:justify;">依職業安全衛生法第三十二條第二項訂定之職業安全衛生教育訓練規則（以下簡稱本規則）於六十四年六月十二日發布施行迄今，歷經多次修正，最近一次修正日期為一百十年七月七日。現行第二十條第二項規定之對外招訓認可制度，自一百年十一月八日施行，為納管認可制度施行前已對外招訓之單位、推動訓練單位全面建立自主管理制度，以及持續推行應具評鑑甲等以上單位始得辦理對應訓練，以促使訓練單位自主提升訓練品質，爰修正本規則部分條文，其修正重點如下：<br><br>
-                一、訓練單位如對外招收不特定對象辦訓，應設立職業訓練機構並經中央主管機關認可之規定，新增納管雇主團體及勞工團體，以齊一體制。事業單位以辦理其勞工或相關承攬事業間之安全衛生教育訓練為限。（修正條文第二十條、第二十條之一、第二十三條及第三十一條）<br><br>
-                二、經中央主管機關認可得對外招訓之訓練單位，均應建立安全衛生教育訓練自主管理制度。（修正條文第二十條之二）<br><br>
-                三、明定評鑑制度及申請條件，整併現行評鑑與自主管理制度認可二機制，並持續推行應具評鑑甲等以上資格始得辦理特定訓練之規範。（修正條文第二十條之三至第二十一條及第四十二條之二）<br><br>
-                四、現行條文第二十條第二項認可制度施行前，已對外招訓之非營利法人、雇主團體及勞工團體，或認可制度施行後，原經認可得對外招訓之非營利法人，應於一百十六年十二月三十一日前，經中央主管機關依第二十條第二項認可後，始得繼續對外招訓，屆期未重新認可者，得廢止原認可。（修正條文第四十二條之一）<br><br>
-                五、統合中央主管機關得委託學術機構或相關專業團體辦理本規則所定認可及評鑑等事項之規定。（修正條文第四十二條之三）</p></div>'''
-            else:
-                return f'<div class="doc-section-block"><h3>《{reg_name}》立法總說明</h3><p>未於政府網站抓取到歷史沿革，且無人工配置之真實公報，請直接參閱官方發布之實體公報，系統絕不生成假資料。</p></div>'
+            base_url = f'https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode={reg_id}'
+            headers = {'User-Agent': random.choice(ua_pool)}
+            real_rows = []
+            summary_html = ''
+            parsed_date = None
+
+            try:
+                r = requests.get(base_url, headers=headers, timeout=10)
+                r.encoding = 'utf-8'
+                if r.status_code == 200:
+                    soup = BeautifulSoup(r.text, 'html.parser')
+
+                    for label in soup.find_all(string=re.compile(r'修正日期|發布日期|修正時間')):
+                        parent = label.find_parent()
+                        if parent:
+                            nxt = parent.find_next_sibling()
+                            if nxt:
+                                dt = parse_republic_date(nxt.get_text(strip=True))
+                                if dt: parsed_date = dt
+
+                    history_div = soup.find('div', id='ContentPlaceHolder1_divHistory')
+                    if history_div:
+                        history_text = history_div.get_text(separator='\n').strip()
+                        summary_html = (
+                            f'<div class="doc-section-block">'
+                            f'<h3>《{reg_name}》歷史沿革與總說明</h3>'
+                            f'<p style="color:#718096; font-size:13px;">數據源：全國法規資料庫 (自動爬取)</p>'
+                            f'<div style="line-height:2.0; font-size:14px; white-space:pre-wrap;">{history_text}</div></div>'
+                        )
+
+                    law_mesh = soup.find('div', class_='law-reg-content')
+                    if law_mesh:
+                        blocks = law_mesh.find_all('div', class_='row')
+                        for block in blocks:
+                            num_el = block.find('div', class_='col-no')
+                            text_el = block.find('div', class_='col-data')
+                            if num_el and text_el:
+                                c_num = num_el.get_text().strip()
+                                c_text = text_el.get_text().strip()
+                                c_title = (c_text[:15] + '...') if len(c_text) > 15 else c_text
+                                real_rows.append({
+                                    'num': c_num,
+                                    'title': c_title,
+                                    'old_diff': f'<span style="color:#718096;">[依官方資料，本法規採全量更新，線上無字元級修正對照表]</span><br><br>{c_text}',
+                                    'new_diff': f'<ins>[最新發布條文]</ins><br>{c_text}'
+                                })
+            except Exception as e:
+                print(f'   ⚠️ MOJ 引擎爬取異常: {e}')
+            
+            return real_rows, summary_html, parsed_date
 
         # =========================================================================
-        # 主流程：讀取 catalog.json，逐一爬取真實日期及條文
+        # 主流程：讀取 catalog.json，發動全動態雙引擎爬取
         # =========================================================================
-        print('\n=== [第二線：智慧對帳與全量舊檔強制清洗判定] ===')
         with open('catalog.json', 'r', encoding='utf-8') as f:
             local_catalog = json.load(f)
 
@@ -124,106 +200,50 @@ jobs:
             file_name = f'{reg_id}.json'
 
             print(f'🔍 檢查標的：【{reg_name}】(ID: {reg_id})')
-
             if (local_date == '1900-01-01') or (not os.path.exists(file_name)) or is_manual_run:
-                print('   🚨 [狀態標記] 強制啟動完全體清洗更新！(全面覆蓋)')
-
-                # 防封鎖呼吸隨機睡眠 (3.5 ~ 7.0 秒)
-                sleep_seconds = random.uniform(3.5, 7.0)
-                print(f'   💤 [安全防禦] 避開頻率監測，爬蟲隨機小憩 {sleep_seconds:.2f} 秒...')
+                print('   🌐 啟動全動態爬蟲聯防引擎...')
+                sleep_seconds = random.uniform(3.5, 6.0)
                 time.sleep(sleep_seconds)
 
-                real_rows = []
-                real_summary_html = ''
-                scraped_date = None
+                # 優先使用 MOL (勞動部) 動態對照表引擎
+                real_rows, summary_html, parsed_date = dynamic_mol_engine(reg_id, reg_name)
+                
+                # 若 MOL 抓不到資料 (非勞動部法規或網頁結構不符)，則降級啟動 MOJ 引擎
+                if not real_rows or not summary_html:
+                    print('   🔄 MOL 引擎無對照表，切換至 MOJ 全國法規資料庫引擎...')
+                    moj_rows, moj_summary, moj_date = dynamic_moj_engine(reg_id, reg_name)
+                    if moj_rows: real_rows = moj_rows
+                    if moj_summary: summary_html = moj_summary
+                    if moj_date and not parsed_date: parsed_date = moj_date
 
-                try:
-                    target_url = f'https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode={reg_id}'
-                    headers = {
-                        'User-Agent': random.choice(ua_pool),
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
-                        'Referer': 'https://law.moj.gov.tw/'
-                    }
-                    req_res = requests.get(target_url, headers=headers, timeout=10)
-                    req_res.encoding = 'utf-8'
+                # 若雙引擎皆失敗，絕對不捏造假資料，誠實寫入空防護
+                if not real_rows:
+                    print('   🚨 雙引擎皆未能解析條文，寫入誠實空狀態防護...')
+                    real_rows = [{'num': '全條文', 'title': '無對照表', 'old_diff': '官方網站目前無法爬取字元級修正對照表或遭防火牆阻擋。', 'new_diff': '請直接查閱政府公報最新發布之實體檔案。系統拒絕生成任何假資料。'}]
+                if not summary_html:
+                    summary_html = f'<div class="doc-section-block"><h3>《{reg_name}》立法總說明</h3><p>網頁解析失敗或無歷史沿革。請查閱官方公報，系統拒絕生成任何假資料。</p></div>'
 
-                    if req_res.status_code == 200:
-                        soup = BeautifulSoup(req_res.text, 'html.parser')
-
-                        # 調用真實修正日期抓取引擎
-                        scraped_date = fetch_gov_date(soup)
-                        if scraped_date:
-                            print(f'   📅 [日期爬取成功] 真實最後修正日轉為西元：{scraped_date}')
-
-                        # 爬取歷史沿革 (成功則保留，失敗則進入 fallback 調用真實字典)
-                        history_div = soup.find('div', id='ContentPlaceHolder1_divHistory')
-                        if history_div:
-                            history_text = history_div.get_text(separator='\n').strip()
-                            real_summary_html = (
-                                f'<div style="margin-bottom:24px;">'
-                                f'<h3 style="font-size:17px; color:#1a365d; border-bottom:3px solid #2b6cb0; padding-bottom:10px; margin-bottom:14px;">《{reg_name}》官方發布歷史沿革與立法總說明全文</h3>'
-                                f'<p style="font-size:13px; color:#718096; margin-bottom:12px;">數據源：中華民國法務部全國法規資料庫（即時爬取）</p>'
-                                f'<div style="background:#f7fafc; border:1px solid #e2e8f0; border-radius:6px; padding:16px; font-size:13.5px; line-height:2.2; color:#2d3748; white-space:pre-wrap;">{history_text}</div>'
-                                f'</div>'
-                            )
-                        else:
-                            raise Exception('無歷史沿革 div 結構')
-
-                        # 爬取真實條文 (網頁只能爬到最新現行文)
-                        law_mesh = soup.find('div', class_='law-reg-content')
-                        if law_mesh:
-                            blocks = law_mesh.find_all('div', class_='row')
-                            for block in blocks:
-                                num_el = block.find('div', class_='col-no')
-                                text_el = block.find('div', class_='col-data')
-                                if num_el and text_el:
-                                    c_num = num_el.get_text().strip()
-                                    c_text = text_el.get_text().strip()
-                                    c_title = (c_text[:15] + '...') if len(c_text) > 15 else c_text
-                                    real_rows.append({
-                                        'num': c_num,
-                                        'title': c_title,
-                                        # old_diff = 網頁上爬取到的現行條文原文
-                                        'old_diff': c_text,
-                                        # new_diff = 不編造假資料，如實標記
-                                        'new_diff': f'<ins>【現行版本即最新版本，無線上對照表】</ins><br>{c_text}'
-                                    })
-                        if not real_rows:
-                            raise Exception('law-reg-content 解析空值')
-                    else:
-                        raise Exception(f'HTTP {req_res.status_code}')
-
-                except Exception as e:
-                    print(f'   🚨 [抓取失敗/熔斷] 觸發安全切換 ({e})，啟動真實公報字典強制注入...')
-                    real_rows = build_real_truth_data(reg_name)
-                    real_summary_html = build_real_truth_summary(reg_name)
-
-                # 【終極防護：強制日期鎖死機制】
-                if '職業安全衛生教育訓練規則' in reg_name:
-                    final_date = '2025-09-04'
-                    print('   🔒 [專屬保護] 觸發強制日期覆寫，鎖死為 114.09.04 (2025-09-04)')
-                else:
-                    final_date = scraped_date if scraped_date else local_date
+                final_date = parsed_date if parsed_date else local_date
 
                 complete_json_payload = {
-                    'summary_html': real_summary_html,
+                    'summary_html': summary_html,
                     'rows': real_rows
                 }
+                
                 with open(file_name, 'w', encoding='utf-8') as f_sub:
                     json.dump(complete_json_payload, f_sub, ensure_ascii=False, indent=4)
 
                 reg['lastUpdate'] = final_date
                 has_changes = True
-                print(f'   🎉 [清洗成功] {file_name} 生產完畢！(日期：{final_date})')
+                print(f'   🎉 [動態清洗成功] {file_name} 生產完畢！(日期：{final_date}，條文數：{len(real_rows)})')
             else:
-                print('   ✅ [狀態標記] 版本號對帳一致。今日安全略過。')
+                print('   ✅ 版本一致，安全略過。')
             print('-' * 60)
 
         if has_changes or is_manual_run:
             with open('catalog.json', 'w', encoding='utf-8') as f:
                 json.dump(local_catalog, f, ensure_ascii=False, indent=4)
-            print('\n🏆 [大腦結論] 儲存庫全量真實數據清洗與目錄強制同步完畢，準備發布至前台！')
+            print('\n🏆 [大腦結論] 儲存庫全量真實動態清洗完畢！')
         PYEOF
 
     # 5. 雲端發布與自動 Commit 強制覆蓋儲存庫
@@ -232,4 +252,4 @@ jobs:
         git config --local user.email "regulatory-bot@github.com"
         git config --local user.name "廠區法規自動化聯防大腦"
         git add .
-        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [無假資料宣言] 啟用法規名稱強比對、強制鎖死 114.09.04 日期、徹底根絕 ID 錯置" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [全動態雙引擎發布] 徹底捨棄寫死！MOL/MOJ 動態表格爬蟲上線，真實抓取對照表與日期" && git push)
