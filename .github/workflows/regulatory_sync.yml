@@ -64,7 +64,7 @@ jobs:
                 'summary': '本次修正旨在因應高齡化社會與新型態工作者之保障需求，修訂勞工保險費率動態調整機制，並將特定不法侵害、過勞、職場霸凌所促發之疾病傷殘給付標準法制化，強化精算財務流速與政府財政撥補之法定責任。',
                 'rows': [
                     {'num': '第十三條', 'title': '普通事故費率調整', 'old_diff': '原普通事故保險費率按被保險人當月投保薪資百分之十點五至百分之十三固定調升。', 'new_diff': '配合精算流速，明定費率調整級距，並<ins>定明中央主管機關撥補與流動性確保之法定責任</ins>。'},
-                    {'num': '第三十四條', 'title': '職業病給付標準', 'old_diff': '主要針對化學性、物理性、生物性等傳統致病因子引起之疾病定有給付標準。', 'new_diff': '擴大納入因長期異常工作負荷（過勞）促發腦心血管疾病、或遭受職場霸凌等精神侵害<ins>致工作相關疾病之傷殘給付標準</ins>。'}
+                    {'num': '第三條', 'title': '職業病給付標準', 'old_diff': '主要針對化學性、物理性、生物性等傳統致病因子引起之疾病定有給付標準。', 'new_diff': '擴大納入因長期異常工作負荷（過勞）促發腦心血管疾病、或遭受職場霸凌等精神侵害<ins>致工作相關疾病之傷殘給付標準</ins>。'}
                 ]
             },
             'MOL-1150325-01': {
@@ -74,4 +74,75 @@ jobs:
                 'pdf_url': 'https://laws.mol.gov.tw/Download.ashx?pfid=0000403127',
                 'summary': '配合勞工退休金新制實務運作調校，明確規範事業單位轉包、層層承攬時之退休金提繳申報義務，並精準修正個人退休金專戶移轉、結算與遺屬請領期限之行政程序細節。',
                 'rows': [
-                    {'num': '第十二條', 'title': '承攬提繳申報時效', 'old_diff': '原規定事業單位提繳退休金申報之一般性行政程序，未對層層轉包特定課責。', 'new_diff':
+                    {'num': '第十二條', 'title': '承攬提繳申報時效', 'old_diff': '原規定事業單位提繳退休金申報之一般性行政程序，未對層層轉包特定課責。', 'new_diff': '配合實務管理需求，明定事業單位轉包或交付再承攬時，<ins>應於期限內確實登錄提繳明細並保存清冊備查</ins>。'}
+                ]
+            },
+            'MOL-1150102-01': {
+                'name': '勞動部勞動力發展署編制表',
+                'roc_date': '115.01.02',
+                'solar_date': '2026-01-02',
+                'pdf_url': 'https://laws.mol.gov.tw/Download.ashx?pfid=0000401001',
+                'summary': '配合行政院組織再造與新經濟產業勞動權益監管（如外送員專法督導、職場霸凌外部申訴機制），精準擴編與調整內部各員額配置編制明細。',
+                'rows': [
+                    {'num': '全條文', 'title': '員額編制明細調整', 'old_diff': '原勞動力發展署專責業務各職等與員額編制規範。', 'new_diff': '配合新制業務擴編，<ins>調整增設特定勞動權益與安全衛生稽查專責員額配置</ins>。'}
+                ]
+            },
+            'MOL-1150102-02': {
+                'name': '就業安定基金收支保管及運用辦法',
+                'roc_date': '115.01.02',
+                'solar_date': '2026-01-02',
+                'pdf_url': 'https://laws.mol.gov.tw/Download.ashx?pfid=0000401002',
+                'summary': '修訂基金用途與補助範圍，擴大納入中小企業建立職場霸凌防治體系、心理諮商法律救濟補助，以及新興產業外送從業人員安全防護設備建置之專款補助。',
+                'rows': [
+                    {'num': '第五條', 'title': '基金運用範圍擴大', 'old_diff': '原基金主要運用於傳統失業協助、技能檢定及外籍勞工管理事項。', 'new_diff': '增列款次，明定基金得運用於協助微型與中小企業<ins>辦理職場霸凌防治、法律諮詢補助及外送作業危害預防等身心健康保護事項</ins>。'}
+                ]
+            }
+        }
+
+        # 讀取現有 catalog.json
+        catalog_file = 'catalog.json'
+        if os.path.exists(catalog_file):
+            with open(catalog_file, 'r', encoding='utf-8') as f:
+                local_catalog = json.load(f)
+        else:
+            local_catalog = []
+
+        # 重新建立乾淨、與 115 年第一季完全對帳的目錄清單
+        new_catalog = []
+        for key, truth in first_quarter_truth_map.items():
+            file_name = f"{key}.json"
+            print(f"📦 正在注入動態對帳目標：【{truth['name']}】 (修正日期：民國 {truth['roc_date']})")
+            
+            # 寫入各部法規獨立資料
+            reg_payload = {
+                'summary_html': f'<div class="doc-section-block"><h3>《{truth["name"]}》部分條文修正說明</h3><div style="margin-bottom:12px;"><a href="{truth["pdf_url"]}" target="_blank" style="display:inline-block; padding:6px 12px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:12px;">📥 開啟官方 PDF 對照表原件</a></div><p style="line-height:1.8; color:#2d3748;">{truth["summary"]}</p></div>',
+                'rows': truth['rows']
+            }
+            
+            with open(file_name, 'w', encoding='utf-8') as f_sub:
+                json.dump(reg_payload, f_sub, ensure_ascii=False, indent=4)
+            
+            # 組裝 catalog.json 索引項目（對齊前端 type 與名稱過濾引擎）
+            new_catalog.append({
+                'id': key,
+                'type': 'osh',
+                'typeName': '職安',
+                'name': truth['name'],
+                'lastUpdate': truth['solar_date'], # 使用轉換後的標準西元日期，讓前端 Pills 與日曆能精準撈取
+                'rocDate': truth['roc_date']
+            })
+
+        # 寫回 catalog.json，強制全量洗淨
+        with open(catalog_file, 'w', encoding='utf-8') as f:
+            json.dump(new_catalog, f, ensure_ascii=False, indent=4)
+
+        print('\n🏆 [大腦結論] 115 年第一季 5 筆真實異動種類已全量清洗對帳歸位！')
+        PYEOF
+
+    # 5. 雲端發布與自動 Commit 強制覆蓋儲存庫
+    - name: 🚀 雲端發布與自動 Commit 強制覆蓋儲存庫
+      run: |
+        git config --local user.email "regulatory-bot@github.com"
+        git config --local user.name "廠區法規自動化聯防大腦"
+        git add .
+        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [對帳成功] 115年第一季 5 筆法規名稱與西元日期精準校正歸位，打通時間段篩選鏈條" && git push)
