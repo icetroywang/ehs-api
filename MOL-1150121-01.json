@@ -1,0 +1,17 @@
+{
+    "summary_html": "<div class=\"doc-section-block\"><h3>《外送員權益保障及外送平臺管理法》部分條文修正說明</h3><div style=\"margin-bottom:12px;\"><a href=\"https://laws.mol.gov.tw/Download.ashx?pfid=0000405001\" target=\"_blank\" style=\"display:inline-block; padding:6px 12px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:12px;\">📥 開啟官方 PDF 對照表原件</a></div><p style=\"line-height:1.8; color:#2d3748;\">為保障新經濟型態外送從業人員之生命安全與身心健康，特制定本法。明確規範外送平臺業者應為無僱用關係之外送員投保強制第三人責任保險及不法侵害事故險，並落實門禁進場管制、交通與天候狀況之危害防止計畫，合理分派工作報酬，落實源頭風險管理。</p></div>",
+    "rows": [
+        {
+            "num": "第三條",
+            "title": "平臺業者基本義務",
+            "old_diff": "[新訂法律] 過去各地方政府自治條例缺乏中央統一母法規範，管理落差大。",
+            "new_diff": "明定外送平臺業者交付無僱用關係之個人親自履行外送作業時，<ins>應置備安全帽、反光標示等合理必要之安全衛生防護設施</ins>。"
+        },
+        {
+            "num": "第十二條",
+            "title": "報酬公式透明化",
+            "old_diff": "[新訂法律] 過去平臺計費機制不透明，片面調整常引發重大勞資爭議。",
+            "new_diff": "平臺業者應評估交通、天候狀況、送達件數與時間，<ins>合理分派工作且計費公式應全面公開透明</ins>，非經外送員諮詢同意不得片面調降。"
+        }
+    ]
+}

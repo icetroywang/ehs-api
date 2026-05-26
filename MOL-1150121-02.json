@@ -1,0 +1,17 @@
+{
+    "summary_html": "<div class=\"doc-section-block\"><h3>《勞工保險條例》部分條文修正說明</h3><div style=\"margin-bottom:12px;\"><a href=\"https://laws.mol.gov.tw/Download.ashx?pfid=0000405002\" target=\"_blank\" style=\"display:inline-block; padding:6px 12px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:12px;\">📥 開啟官方 PDF 對照表原件</a></div><p style=\"line-height:1.8; color:#2d3748;\">本次修正旨在因應高齡化社會與新型態工作者之保障需求，修訂勞工保險費率動態調整機制，並將特定不法侵害、過勞、職場霸凌所促發之疾病傷殘給付標準法制化，強化精算財務流速與政府財政撥補之法定責任。</p></div>",
+    "rows": [
+        {
+            "num": "第十三條",
+            "title": "普通事故費率調整",
+            "old_diff": "原普通事故保險費率按被保險人當月投保薪資百分之十點五至百分之十三固定調升。",
+            "new_diff": "配合精算流速，明定費率調整級距，並<ins>定明中央主管機關撥補與流動性確保之法定責任</ins>。"
+        },
+        {
+            "num": "第三條",
+            "title": "職業病給付標準",
+            "old_diff": "主要針對化學性、物理性、生物性等傳統致病因子引起之疾病定有給付標準。",
+            "new_diff": "擴大納入因長期異常工作負荷（過勞）促發腦心血管疾病、或遭受職場霸凌等精神侵害<ins>致工作相關疾病之傷殘給付標準</ins>。"
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+{
+    "summary_html": "<div class=\"doc-section-block\"><h3>《就業安定基金收支保管及運用辦法》部分條文修正說明</h3><div style=\"margin-bottom:12px;\"><a href=\"https://laws.mol.gov.tw/Download.ashx?pfid=0000401002\" target=\"_blank\" style=\"display:inline-block; padding:6px 12px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:12px;\">📥 開啟官方 PDF 對照表原件</a></div><p style=\"line-height:1.8; color:#2d3748;\">修訂基金用途與補助範圍，擴大納入中小企業建立職場霸凌防治體系、心理諮商法律救濟補助，以及新興產業外送從業人員安全防護設備建置之專款補助。</p></div>",
+    "rows": [
+        {
+            "num": "第五條",
+            "title": "基金運用範圍擴大",
+            "old_diff": "原基金主要運用於傳統失業協助、技能檢定及外籍勞工管理事項。",
+            "new_diff": "增列款次，明定基金得運用於協助微型與中小企業<ins>辦理職場霸凌防治、法律諮詢補助及外送作業危害預防等身心健康保護事項</ins>。"
+        }
+    ]
+}

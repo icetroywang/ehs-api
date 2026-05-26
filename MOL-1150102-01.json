@@ -1,0 +1,11 @@
+{
+    "summary_html": "<div class=\"doc-section-block\"><h3>《勞動部勞動力發展署編制表》部分條文修正說明</h3><div style=\"margin-bottom:12px;\"><a href=\"https://laws.mol.gov.tw/Download.ashx?pfid=0000401001\" target=\"_blank\" style=\"display:inline-block; padding:6px 12px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:12px;\">📥 開啟官方 PDF 對照表原件</a></div><p style=\"line-height:1.8; color:#2d3748;\">配合行政院組織再造與新經濟產業勞動權益監管（如外送員專法督導、職場霸凌外部申訴機制），精準擴編與調整內部各員額配置編制明細。</p></div>",
+    "rows": [
+        {
+            "num": "全條文",
+            "title": "員額編制明細調整",
+            "old_diff": "原勞動力發展署專責業務各職等與員額編制規範。",
+            "new_diff": "配合新制業務擴編，<ins>調整增設特定勞動權益與安全衛生稽查專責員額配置</ins>。"
+        }
+    ]
+}
