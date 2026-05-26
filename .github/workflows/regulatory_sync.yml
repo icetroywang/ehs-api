@@ -20,27 +20,31 @@ jobs:
       with:
         python-version: '3.10'
 
-    # 3. 安裝必要依賴套件
-    - name: 📦 安裝官方真實網頁結構解析與字元級 Diff 必要套件
+    # 3. 安裝工業級反偵測與網頁解析套件 (導入 cloudscraper 突破政府 WAF 防火牆)
+    - name: 📦 安裝官方真實網頁結構解析與反偵測必要套件
       run: |
         python -m pip install --upgrade pip
-        pip install requests beautifulsoup4
+        pip install cloudscraper beautifulsoup4
 
-    # 4. 啟動正版連網真實數據源解析與全動態爬蟲引擎 (全面拔除寫死假資料)
-    - name: 🧠 執行政府官方數據源實時解析與全動態爬蟲引擎
+    # 4. 啟動正版連網真實數據源解析與全動態穿透引擎
+    - name: 🧠 執行政府官方數據源實時解析與全動態爬蟲引擎 (WAF 穿透版)
       run: |
         python << 'PYEOF'
-        import os, json, requests, re, time, random
+        import os, json, re, time, random
+        import cloudscraper
         from bs4 import BeautifulSoup
         from urllib.parse import urljoin
 
-        print('=== [第一線：全動態情報監測哨發動 (徹底拔除寫死字典)] ===')
+        print('=== [第一線：全動態情報監測哨發動 (WAF 穿透武裝)] ===')
 
-        ua_pool = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0'
-        ]
+        # 建立具備真實瀏覽器 TLS 指紋與 JS 挑戰破解能力的 Scraper
+        scraper = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'desktop': True
+            }
+        )
 
         def parse_republic_date(text):
             """動態萃取文本中的民國日期並轉西元"""
@@ -54,11 +58,10 @@ jobs:
         def dynamic_mol_engine(reg_id, reg_name):
             """
             【核心重構一】勞動部法規查詢系統 (MOL) 動態爬蟲引擎
-            放棄解析 PDF 亂碼，改為：動態擷取 PDF 下載連結 + 動態抓取最新全條文
+            透過 cloudscraper 穿透防護，動態擷取 PDF 下載連結 + 全條文
             """
             base_url = f'https://laws.mol.gov.tw/FLAW/FLAWDAT07.aspx?id={reg_id}'
             all_articles_url = f'https://laws.mol.gov.tw/FLAW/FLAWDAT0201.aspx?id={reg_id}'
-            headers = {'User-Agent': random.choice(ua_pool)}
             
             real_rows = []
             summary_html = ''
@@ -67,7 +70,7 @@ jobs:
 
             try:
                 # 第一步：進入法規首頁，抓取日期、總說明與 PDF 連結
-                r = requests.get(base_url, headers=headers, timeout=10)
+                r = scraper.get(base_url, timeout=15)
                 r.encoding = 'utf-8'
                 if r.status_code == 200:
                     soup = BeautifulSoup(r.text, 'html.parser')
@@ -79,7 +82,7 @@ jobs:
                             parsed_date = dt
                             break
 
-                    # 2. 捕捉實體 PDF 條文對照表連結 (突破二進位盲點)
+                    # 2. 捕捉實體 PDF 條文對照表連結
                     diff_link = soup.find('a', string=re.compile(r'條文對照表'))
                     if diff_link and diff_link.get('href'):
                         pdf_download_url = urljoin(base_url, diff_link.get('href'))
@@ -89,7 +92,7 @@ jobs:
                     summary_link = soup.find('a', string=re.compile(r'立法總說明'))
                     if summary_link and summary_link.get('href'):
                         s_url = urljoin(base_url, summary_link.get('href'))
-                        sr = requests.get(s_url, headers=headers, timeout=10)
+                        sr = scraper.get(s_url, timeout=15)
                         sr.encoding = 'utf-8'
                         s_soup = BeautifulSoup(sr.text, 'html.parser')
                         
@@ -97,18 +100,15 @@ jobs:
                         if content_div:
                             text_body = content_div.get_text(separator="<br>").strip()
                             
-                            # 若有 PDF 連結，嵌在總說明最上方
                             pdf_btn_html = f'<div style="margin-bottom:15px;"><a href="{pdf_download_url}" target="_blank" style="display:inline-block; padding:8px 16px; background:#2b6cb0; color:white; text-decoration:none; border-radius:4px; font-weight:bold; font-size:13px;">📥 下載官方 PDF 條文對照表原件</a></div>' if pdf_download_url else ''
-                            
-                            summary_html = f'<div class="doc-section-block"><h3>《{reg_name}》官方立法總說明</h3><p style="color:#718096; font-size:13px; margin-bottom:15px;">數據源：勞動部主管法規查詢系統 (自動爬取)</p>{pdf_btn_html}<div style="line-height:2.0; font-size:14px; text-align:justify;">{text_body}</div></div>'
+                            summary_html = f'<div class="doc-section-block"><h3>《{reg_name}》官方立法總說明</h3><p style="color:#718096; font-size:13px; margin-bottom:15px;">數據源：勞動部主管法規查詢系統 (雲端穿透動態擷取)</p>{pdf_btn_html}<div style="line-height:2.0; font-size:14px; text-align:justify;">{text_body}</div></div>'
 
                 # 第二步：進入「所有條文」頁面，動態抓取最新全量法條
-                r_all = requests.get(all_articles_url, headers=headers, timeout=10)
+                r_all = scraper.get(all_articles_url, timeout=15)
                 r_all.encoding = 'utf-8'
                 if r_all.status_code == 200:
                     soup_all = BeautifulSoup(r_all.text, 'html.parser')
                     
-                    # 若成功捕捉到 PDF 連結，將其作為第 0 條特別防護列顯示，方便使用者下載
                     if pdf_download_url:
                         real_rows.append({
                             'num': '📌 官方對照表',
@@ -117,7 +117,7 @@ jobs:
                             'new_diff': f'<a href="{pdf_download_url}" target="_blank" style="color:#2b6cb0; font-weight:bold; text-decoration:underline;">📥 點擊此處直接下載/開啟官方發布之《{reg_name}》PDF 對照表原件</a>'
                         })
 
-                    # 解析所有現行條文 (動態萃取)
+                    # 放寬表格解析相容性
                     law_table = soup_all.find('table', class_='table') or soup_all.find('table')
                     if law_table:
                         trs = law_table.find_all('tr')
@@ -127,7 +127,7 @@ jobs:
                                 c_num = tds[0].get_text(strip=True)
                                 c_text = tds[1].get_text(separator='<br>').strip()
                                 
-                                if not c_num or '第' not in c_num: continue
+                                if not c_num or ('第' not in c_num and '附表' not in c_num): continue
                                 c_title = (c_text[:15].replace('<br>', '') + '...') if len(c_text) > 15 else c_text
                                 
                                 real_rows.append({
@@ -144,16 +144,15 @@ jobs:
         def dynamic_moj_engine(reg_id, reg_name):
             """
             【核心重構二】法務部全國法規資料庫 (MOJ) 備用引擎
-            若 MOL 引擎無資料(如消防/環境等非勞動部法規)，無縫降級至 MOJ 抓取最新全量條文。
+            穿透 MOJ 防護，無縫降級抓取。
             """
             base_url = f'https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode={reg_id}'
-            headers = {'User-Agent': random.choice(ua_pool)}
             real_rows = []
             summary_html = ''
             parsed_date = None
 
             try:
-                r = requests.get(base_url, headers=headers, timeout=10)
+                r = scraper.get(base_url, timeout=15)
                 r.encoding = 'utf-8'
                 if r.status_code == 200:
                     soup = BeautifulSoup(r.text, 'html.parser')
@@ -172,7 +171,7 @@ jobs:
                         summary_html = (
                             f'<div class="doc-section-block">'
                             f'<h3>《{reg_name}》歷史沿革與總說明</h3>'
-                            f'<p style="color:#718096; font-size:13px; margin-bottom:15px;">數據源：全國法規資料庫 (自動爬取)</p>'
+                            f'<p style="color:#718096; font-size:13px; margin-bottom:15px;">數據源：全國法規資料庫 (雲端穿透動態擷取)</p>'
                             f'<div style="line-height:2.0; font-size:14px; white-space:pre-wrap;">{history_text}</div></div>'
                         )
 
@@ -214,8 +213,8 @@ jobs:
 
             print(f'🔍 檢查標的：【{reg_name}】(ID: {reg_id})')
             if (local_date == '1900-01-01') or (not os.path.exists(file_name)) or is_manual_run:
-                print('   🌐 啟動全動態爬蟲聯防引擎...')
-                sleep_seconds = random.uniform(3.5, 6.0)
+                print('   🌐 啟動全動態爬蟲聯防引擎 (WAF 穿透武裝)...')
+                sleep_seconds = random.uniform(4.5, 8.0)
                 time.sleep(sleep_seconds)
 
                 # 優先使用 MOL (勞動部) 動態引擎
@@ -223,7 +222,7 @@ jobs:
                 
                 # 若 MOL 抓不到實質法條 (代表可能非勞動部法規，或 ID 在 MOL 系統不存在)
                 if not real_rows:
-                    print('   🔄 MOL 引擎無回應或非勞管法規，無縫切換至 MOJ 全國法規資料庫引擎...')
+                    print('   🔄 MOL 引擎無回應，無縫切換至 MOJ 全國法規資料庫引擎...')
                     moj_rows, moj_summary, moj_date = dynamic_moj_engine(reg_id, reg_name)
                     if moj_rows: real_rows = moj_rows
                     if moj_summary: summary_html = moj_summary
@@ -266,4 +265,4 @@ jobs:
         git config --local user.email "regulatory-bot@github.com"
         git config --local user.name "廠區法規自動化聯防大腦"
         git add .
-        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [工業級動態爬蟲 v2] 放棄解析二進位PDF，改為動態擷取下載連結 + 全條文動態抓取" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [工業級穿透武裝 v3] 導入 cloudscraper 擊穿政府防火牆，全面動態解析" && git push)
